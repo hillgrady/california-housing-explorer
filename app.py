@@ -264,7 +264,9 @@ def model_page():
         f"""
 The estimate comes from a **histogram gradient boosting regressor** (scikit learn) trained on
 {m['n_train']:,} districts and tested on {m['n_test']:,} districts it never saw. Two more models
-predict the 10th and 90th percentiles, which give the **80% range**.
+predict the 10th and 90th percentiles, which give the **80% range**. All three models are
+**constrained so that a higher median income never lowers the estimate**, which keeps the
+predictions sensible when a user changes the income.
 """)
     c = st.columns(4)
     c[0].metric("R² (test)", f"{m['r2']:.3f}")

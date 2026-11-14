@@ -1,7 +1,8 @@
 """House price model: training, validation of inputs, prediction and explanation.
 
 The model is a histogram gradient boosting regressor (scikit-learn) with two
-quantile models (10% and 90%) that give an 80% prediction range. It is trained
+quantile models (10% and 90%) that give an 80% prediction range. All three are
+constrained so that a higher median income never lowers the prediction. It is trained
 on 80% of the districts and evaluated on the other 20%.
 """
 from __future__ import annotations
@@ -52,8 +53,12 @@ def _pipeline(**kw) -> Pipeline:
                                unknown_value=-1), [CAT]),
         ("num", "passthrough", NUMERIC),
     ])
+    # Higher median income may never lower the predicted value (monotonic constraint).
+    # Column order after the transformer: ocean_proximity, then NUMERIC.
+    monotone = [0] + [1 if c == "median_income" else 0 for c in NUMERIC]
     hgb = HistGradientBoostingRegressor(categorical_features=[0], max_iter=400,
-                                        learning_rate=0.08, random_state=42, **kw)
+                                        learning_rate=0.08, random_state=42,
+                                        monotonic_cst=monotone, **kw)
     return Pipeline([("pre", pre), ("hgb", hgb)])
 
 
