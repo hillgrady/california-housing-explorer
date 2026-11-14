@@ -40,4 +40,5 @@ streamlit run app.py
 | `housing/data.py` | Loading, filtering and summarizing the data |
 | `housing/model.py` | Model training, input checks, predictions and explanations |
 | `data/housing.csv` | California Housing data (1990 U.S. Census) |
+| `models/price_model.joblib` | The trained price model (rebuild it with `python -m housing.model`) |
 | `run_app.sh` | One command local launcher |

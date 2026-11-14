@@ -4,14 +4,20 @@ Run locally:  streamlit run app.py
 """
 from __future__ import annotations
 
-import numpy as np
+import os
+
+# Small cloud servers share their CPUs; limit native thread pools to avoid slowdowns.
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "2")
+
+import numpy as np  # noqa: E402
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from housing.data import CATEGORIES, LABELS, VALUE_CAP, filter_data, load_data, summary
-from housing.model import build_row, train
+from housing.model import build_row, load_or_train
 
 st.set_page_config(page_title="California Housing Explorer", page_icon="🏠", layout="wide")
 
@@ -38,12 +44,12 @@ def get_data() -> pd.DataFrame:
     return load_data()
 
 
-MODEL_VERSION = 2  # bump when the model changes so the cached model is retrained
+MODEL_VERSION = 3  # bump when the model changes so the cached model is retrained
 
 
-@st.cache_resource(show_spinner="Training the price model (first visit only, about 10 seconds) ...")
+@st.cache_resource(show_spinner="Loading the price model ...")
 def get_model(version: int = MODEL_VERSION):
-    return train(get_data())
+    return load_or_train(get_data())
 
 
 def money(x: float) -> str:

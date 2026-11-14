@@ -19,7 +19,9 @@ from sklearn.neighbors import BallTree
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 
-from .data import CATEGORIES, VALUE_CAP
+from .data import CATEGORIES, ROOT, VALUE_CAP
+
+MODEL_PATH = ROOT / "models" / "price_model.joblib"
 
 NUMERIC = ["longitude", "latitude", "housing_median_age", "total_rooms", "total_bedrooms",
            "population", "households", "median_income"]
@@ -178,3 +180,31 @@ def build_row(latitude, longitude, ocean_proximity, median_income, housing_media
         "median_income": float(median_income),
         "ocean_proximity": ocean_proximity,
     }
+
+
+def save(model: PriceModel, path=MODEL_PATH) -> None:
+    import joblib
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, path, compress=3)
+
+
+def load_or_train(df: pd.DataFrame, path=MODEL_PATH) -> PriceModel:
+    """Load the model shipped with the app. Train a new one only if the file is
+    missing or cannot be read (for example after a library version change)."""
+    import warnings
+    try:
+        import joblib
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # a version mismatch warning means retrain
+            model = joblib.load(path)
+        model.predict_frame(df.head(2))  # quick self test
+        return model
+    except Exception:  # noqa: BLE001
+        return train(df)
+
+
+if __name__ == "__main__":
+    from .data import load_data
+    m = train(load_data())
+    save(m)
+    print("Saved", MODEL_PATH, m.metrics)
