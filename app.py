@@ -10,8 +10,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.data import CATEGORIES, LABELS, VALUE_CAP, filter_data, load_data, summary
-from src.model import build_row, train
+from housing.data import CATEGORIES, LABELS, VALUE_CAP, filter_data, load_data, summary
+from housing.model import build_row, train
 
 st.set_page_config(page_title="California Housing Explorer", page_icon="🏠", layout="wide")
 
@@ -38,8 +38,11 @@ def get_data() -> pd.DataFrame:
     return load_data()
 
 
+MODEL_VERSION = 2  # bump when the model changes so the cached model is retrained
+
+
 @st.cache_resource(show_spinner="Training the price model (first visit only, about 10 seconds) ...")
-def get_model():
+def get_model(version: int = MODEL_VERSION):
     return train(get_data())
 
 
@@ -126,7 +129,7 @@ def explore_page():
         fig = scatter_map(m, color, hover_data={"median_house_value": ":$,.0f", "median_income": ":.2f",
                                                 "ocean_proximity": True, "latitude": False,
                                                 "longitude": False}, opacity=0.6, **kw)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         if len(f) > MAP_POINTS:
             st.caption(f"Showing a random {MAP_POINTS:,} of {len(f):,} districts to keep the map fast.")
     numeric = ["median_house_value", "median_income", "housing_median_age", "rooms_per_household",
@@ -137,8 +140,8 @@ def explore_page():
         d = f[f[var] < f[var].quantile(0.995)] if var.endswith("household") else f
         fig = px.histogram(d, x=var, color="ocean_proximity" if split else None, nbins=60,
                            color_discrete_map=COLORS, labels=LABELS, barmode="overlay", opacity=0.75)
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(f[var].describe().to_frame(LABELS[var]).T.round(2), use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
+        st.dataframe(f[var].describe().to_frame(LABELS[var]).T.round(2), width="stretch")
     with t_rel:
         a, b = st.columns(2)
         x = a.selectbox("X axis", numeric, index=1, format_func=LABELS.get)
@@ -157,7 +160,7 @@ def explore_page():
             lx, ly = LABELS[x].lower().replace("$", "\\$"), LABELS[y].lower().replace("$", "\\$")
             st.markdown(f"**Correlation r = {r:.3f}** across {len(full):,} districts. "
                         f"Each +1 in {lx} goes with {slope:+,.2f} in {ly}.")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with t_cat:
         metric = st.selectbox("Compare", numeric, format_func=LABELS.get, key="cat_metric")
         g = (f.groupby("ocean_proximity", observed=True)[metric]
@@ -166,17 +169,17 @@ def explore_page():
         fig = px.box(f, x="ocean_proximity", y=metric, color="ocean_proximity", labels=LABELS,
                      color_discrete_map=COLORS, category_orders={"ocean_proximity": CATEGORIES})
         fig.update_layout(showlegend=False)
-        a.plotly_chart(fig, use_container_width=True)
+        a.plotly_chart(fig, width="stretch")
         b.dataframe(g.rename(columns={"ocean_proximity": "Category", "count": "Districts",
                                       "median": "Median", "mean": "Mean"}).round(2),
-                    use_container_width=True, hide_index=True)
+                    width="stretch", hide_index=True)
         if (g["count"] < 30).any():
             b.caption("Groups with fewer than 30 districts (such as ISLAND) give unreliable averages.")
     with t_data:
         cols = ["longitude", "latitude", "ocean_proximity", "median_house_value", "median_income",
                 "housing_median_age", "households", "population", "rooms_per_household",
                 "bedrooms_per_room", "people_per_household"]
-        st.dataframe(f[cols].round(3), use_container_width=True, height=420, hide_index=True)
+        st.dataframe(f[cols].round(3), width="stretch", height=420, hide_index=True)
         st.download_button("⬇️ Download filtered data (CSV)", f[cols].to_csv(index=False).encode(),
                            "california_housing_filtered.csv", "text/csv")
 
@@ -206,7 +209,7 @@ def predict_page():
         rooms = a.number_input("Rooms per household", 1.0, 15.0, 5.2, step=0.1)
         bedrooms = b.number_input("Bedrooms per room", 0.05, 0.6, 0.21, step=0.01)
         people = c.number_input("People per household", 1.0, 10.0, 2.8, step=0.1)
-        go_ = st.form_submit_button("Estimate value", type="primary", use_container_width=True)
+        go_ = st.form_submit_button("Estimate value", type="primary", width="stretch")
     if not go_:
         st.caption("Set the inputs and press **Estimate value**.")
         return
@@ -234,7 +237,7 @@ def predict_page():
                      color=sens["Difference"] > 0, color_discrete_map={True: "#2a9d8f", False: "#e76f51"})
         fig.update_layout(showlegend=False, xaxis_title="Change in estimate ($)", yaxis_title="",
                           height=360, margin=dict(l=0, r=0, t=10, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.caption("Each bar changes one input and keeps the others fixed.")
     with right:
         st.subheader("Where it is")
@@ -245,13 +248,13 @@ def predict_page():
                  center={"lat": lat, "lon": lon}, height=360, **style)
         fig.update_traces(marker=dict(size=16, color="#e63946"))
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     st.subheader("Nearest real districts in the 1990 data")
     sim = model.similar_districts(row)
     st.dataframe(sim.rename(columns=LABELS).style.format({
         LABELS["median_house_value"]: "${:,.0f}", LABELS["median_income"]: "{:.2f}",
         LABELS["latitude"]: "{:.2f}", LABELS["longitude"]: "{:.2f}"}),
-        use_container_width=True, hide_index=True)
+        width="stretch", hide_index=True)
     with st.expander("Model inputs sent to the model"):
         st.json(row)
 

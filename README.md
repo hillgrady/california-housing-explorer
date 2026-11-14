@@ -37,7 +37,7 @@ streamlit run app.py
 | Path | Contents |
 |---|---|
 | `app.py` | The Streamlit app |
-| `src/data.py` | Loading, filtering and summarizing the data |
-| `src/model.py` | Model training, input checks, predictions and explanations |
+| `housing/data.py` | Loading, filtering and summarizing the data |
+| `housing/model.py` | Model training, input checks, predictions and explanations |
 | `data/housing.csv` | California Housing data (1990 U.S. Census) |
 | `run_app.sh` | One command local launcher |
