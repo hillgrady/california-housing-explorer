@@ -50,8 +50,8 @@ def money(x: float) -> str:
 def scatter_map(df: pd.DataFrame, color: str, **kw):
     """Plotly map that works on both newer (scatter_map) and older (scatter_mapbox) Plotly."""
     fn = getattr(px, "scatter_map", None)
-    args = dict(lat="latitude", lon="longitude", color=color, zoom=4.6,
-                center={"lat": 36.8, "lon": -119.4}, height=560, **kw)
+    args = dict(lat="latitude", lon="longitude", color=color, zoom=4.9,
+                center={"lat": 37.2, "lon": -119.6}, height=600, **kw)
     if fn is not None:
         fig = fn(df, map_style="open-street-map", **args)
     else:
@@ -154,8 +154,9 @@ def explore_page():
             fig.add_trace(go.Scatter(x=xs, y=slope * xs + icpt, mode="lines", name="Linear fit",
                                      line=dict(color="black", width=2)))
             r = full[x].corr(full[y])
+            lx, ly = LABELS[x].lower().replace("$", "\\$"), LABELS[y].lower().replace("$", "\\$")
             st.markdown(f"**Correlation r = {r:.3f}** across {len(full):,} districts. "
-                        f"Each +1 in {LABELS[x].lower()} goes with {slope:+,.2f} in {LABELS[y].lower()}.")
+                        f"Each +1 in {lx} goes with {slope:+,.2f} in {ly}.")
         st.plotly_chart(fig, use_container_width=True)
     with t_cat:
         metric = st.selectbox("Compare", numeric, format_func=LABELS.get, key="cat_metric")
